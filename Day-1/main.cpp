@@ -56,7 +56,7 @@ int main()
 
 
     if (!fh.is_open()) {
-        std::cerr << "Failed to open file 'test1.txt'" << std::endl;
+        std::cerr << "Failed to open file " << path << std::endl;
         return 1; 
     }
 
