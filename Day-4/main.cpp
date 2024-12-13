@@ -64,6 +64,29 @@ public:
  
         return wordCount;
     }
+
+    bool findTwoWordsDiagonal(int row, int col, char word[3]) {
+        int wordSize = this->grid[0].length();
+        if (row < 1 || row > this->grid.size() - 2 || col < 1 || col > wordSize - 2 || this->grid[row][col] != word[1]) {
+            return false;
+        }
+
+        int wordCount = 0;
+
+        // top left
+        wordCount += this->matches(row + 1, col + 1, word, -1, -1);
+
+        // top right
+        wordCount += this->matches(row + 1, col - 1, word, -1, 1);
+
+        // bottom right
+        wordCount += this->matches(row - 1, col - 1, word, 1, 1);
+ 
+        // bottom left
+        wordCount += this->matches(row - 1, col + 1, word, 1, -1);
+
+        return wordCount >= 2;
+    }
 };
  
 vector<string> loadGrid(fstream& fh) {
@@ -89,6 +112,20 @@ int partOne(vector<string> grid, string word) {
 
     return wordCount;
 }
+
+int partTwo(vector<string> grid, char word[3]) {
+    int wordCount = 0;
+    int rows = grid.size(), cols = grid[0].size();
+    FindWord* findWord = new FindWord(move(grid));
+    for (int r = 1; r < rows - 1; r++) {
+        for (int c = 1; c < cols - 1; c++) {
+            int count = int(findWord->findTwoWordsDiagonal(r, c, word));
+            wordCount += count;
+        }
+    }
+
+    return wordCount;
+}
  
 int main()
 {
@@ -96,6 +133,7 @@ int main()
     fh.open("input.txt");
     vector<string> grid = loadGrid(fh);
     cout << "Part 1: " << partOne(grid, "XMAS") << endl;
+    cout << "Part 2: " << partTwo(grid, "MAS") << endl;
     fh.close();
     return 0;
 }
