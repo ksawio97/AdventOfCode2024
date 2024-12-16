@@ -7,59 +7,78 @@
 #include <optional>
 using namespace std;
 
-int readNextNum(string line, int& start) {
-    if (start == line.length()) {
-        return -1;
-    } 
-
-    int numEnd = line.find_first_of(' ', start) + 1;
-    // no more nums to read
-    if (numEnd < start) {
-        int startCopy = start;
-        start = line.length();
-        return stoi(line.substr(startCopy));
-    }
-    int num = stoi(line.substr(start, numEnd - start));
-
-    start = numEnd;
-    return num;
+bool isSafe(int prev, int num) {
+    int diff = abs(num - prev);
+    return 1 <= diff && diff <= 3;
 }
 
-int partOne(fstream& fh) { 
-    string line;
+
+int lineSafeFailIndex(vector<int>& nums) {
+    int incrCount = 0;
+    int lastIncr[2] = { -1, -1 };
+
+    for (int i = 0; i < nums.size() - 1; i++) {
+        if(!isSafe(nums[i], nums[i + 1])) {
+            return i;
+        }
+
+        bool incr = nums[i] < nums[i + 1];
+        incrCount += incr;
+        lastIncr[incr] = i;
+    }
+
+    if (incrCount != 0 && incrCount != nums.size() - 1) {
+        return lastIncr[incrCount < (nums.size() - incrCount - 1)];
+    }
+
+    return -1;
+}
+
+bool lineSafe(vector<int>& nums) {
+    int incrCount = 0;
+    for (int i = 0; i < nums.size() - 1; i++) {
+        if(!isSafe(nums[i], nums[i + 1])) {
+            return false;
+        }
+
+        incrCount += int(nums[i] < nums[i + 1]);
+    }
+
+    return incrCount == 0 || incrCount == nums.size() - 1;
+}
+
+int partOne(vector<vector<int>>& lines) {
     int safeCount = 0;
-    while (getline(fh, line)) {
-        bool safe = true;
-        int numStart = 0;
-        int lastNum = readNextNum(line, numStart), num = readNextNum(line, numStart);
-        int difference = num - lastNum;
-        lastNum = num;
-        if (abs(difference) < 1 || abs(difference) > 3) {
-            continue;
-        }
-        bool increasing = difference > 0;
-
-        while ((num = readNextNum(line, numStart)) != -1) {
-            difference = num - lastNum;
-            // check if its increasing and check if difference is from 1 to 3 
-            if (((difference > 0) != increasing) || (abs(difference) < 1 || abs(difference) > 3)) {
-                safe = false;
-                break;
-            }
-            lastNum = num;
-        }
-
-        if (safe) {
-            safeCount++;
+    for (auto nums : lines) {
+        if (lineSafe(nums)) {
+            safeCount += 1;
         }
     }
 
     return safeCount;
 }
 
-bool isSafe(int prev, int num) {
-    int diff = abs(num - prev);
-    return 1 <= diff && diff <= 3;
+int partTwo(vector<vector<int>>& lines) {
+    int safeCount = 0;
+    for (auto nums : lines) {
+        int failIndex;
+        if ((failIndex = lineSafeFailIndex(nums)) == -1) {
+            safeCount += 1;
+        } else {
+            vector<int> numsCopy1(nums.begin(), nums.end());
+            vector<int> numsCopy2(nums.begin(), nums.end());
+
+            numsCopy1.erase(numsCopy1.begin() + failIndex);
+            numsCopy2.erase(numsCopy2.begin() + failIndex + 1);
+
+            // check if removing one will change anything
+            if (lineSafe(numsCopy1) || lineSafe(numsCopy2)) {
+                safeCount += 1;
+            }
+        }
+    }
+
+    return safeCount;
 }
 
 // refactor part 1 so we can use this function for both parts
@@ -80,6 +99,16 @@ vector<int> loadLineAsList(string line) {
     return nums;
 }
 
+vector<vector<int>> loadLinesAsLists(fstream& fh) {
+    string line;
+    vector<vector<int>> lines{};
+    while (getline(fh, line)) {
+        lines.push_back(loadLineAsList(line));
+    }
+
+    return lines;
+}
+
 int main()
 {
     string path = "input.txt";
@@ -91,13 +120,10 @@ int main()
         return 1;
     }
 
-    
-    cout << "Part 1: " << partOne(fh) << endl;
+    auto lines = loadLinesAsLists(fh);
     fh.close();
-    // safeCount = 0;
-    fh.open(path);
+    cout << "Part 1: " << partOne(lines) << endl;
+    cout << "Part 2: " << partTwo(lines) << endl;
 
-    // cout << "Part 2: " << partTwo(fh) << endl;
-    fh.close();
     return 0;
 }
