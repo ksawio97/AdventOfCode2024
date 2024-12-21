@@ -82,28 +82,54 @@ public:
 };
 map<char, shared_ptr<Frequency>> Frequency::frequencies{};
 
+void lookForAntiNodes(Pos* pos1, Pos* pos2, Size& size, set<string>& antinodes) {
+    Pos newPos = pos1->getDoubleDifferencePos(pos2);
+    if (size.posInRange(newPos)) {
+        antinodes.insert(newPos.tokenize());
+    }
+    newPos = pos2->getDoubleDifferencePos(pos1);
+    if (size.posInRange(newPos)) {
+        antinodes.insert(newPos.tokenize());
+    }
+}
 
+// pos 2 should always be in range, we don't need to check it
+void lookForAntiNodesRecursive(Pos* pos1, Pos* pos2, Size& size, set<string>& antinodes) {
+    if (!size.posInRange(*pos1)) {
+        return;
+    }
+    antinodes.insert(pos1->tokenize());
+    Pos newPos = pos1->getDoubleDifferencePos(pos2);
+    lookForAntiNodesRecursive(&newPos, pos1, size, antinodes);
+}
 
-int partOne(Size& size) {
+void lookForAntiNodesRecursiveStart(Pos* pos1, Pos* pos2, Size& size, set<string>& antinodes) {
+    lookForAntiNodesRecursive(pos1, pos2, size, antinodes);
+    // check opposite direction
+    lookForAntiNodesRecursive(pos2, pos1, size, antinodes);
+}
+
+int checkAllCombinations(Size& size, void (getAntiNodes)(Pos*, Pos*, Size&, set<string>&)) {
     vector<char> keys = Frequency::getFrequencyKeys();
     set<string> antinodes{};
     for (char& key : keys) {
         auto positions = Frequency::getFrequency(key)->getPositions();
-        // check all combinations of positions
         for (int i = 0; i < positions.size(); i++) {
             for (int j = i + 1; j < positions.size(); j++) {
-                // look for the antinode
-                Pos newPos = positions[i]->getDoubleDifferencePos(positions[j]);
-                if (size.posInRange(newPos))
-                    antinodes.insert(newPos.tokenize());
-                newPos = positions[j]->getDoubleDifferencePos(positions[i]);
-                if (size.posInRange(newPos))
-                    antinodes.insert(newPos.tokenize());
+                getAntiNodes(positions[i], positions[j], size, antinodes);
             }
         }
     }
 
     return antinodes.size();
+}
+
+int partOne(Size& size) {
+    return checkAllCombinations(size, lookForAntiNodes);
+}
+
+int partTwo(Size& size) {
+    return checkAllCombinations(size, lookForAntiNodesRecursiveStart);
 }
 
 Size loadFrequencies(fstream &fh) {
@@ -128,7 +154,8 @@ int main() {
     fstream fh;
     fh.open("input.txt");
     auto size = loadFrequencies(fh);
-    cout << partOne(size) << endl;
+    cout << "Part 1: " << partOne(size) << endl;
+    cout << "Part 2: " << partTwo(size) << endl;
     fh.close();
     return 0;
 }
