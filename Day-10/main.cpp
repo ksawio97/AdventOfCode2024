@@ -10,6 +10,7 @@ public:
     int x;
     int y;
     int value;
+    int paths = 0;
     set<Node*> found{};
 
     Node(int x, int y, int value) : x(x), y(y), value(value) {}
@@ -62,6 +63,7 @@ public:
     set<Node*> findPaths(Node* node) {
         // found target
         if (grid[node->y][node->x]->value == 9) {
+            node->paths = 1;
             return { node };
         }
 
@@ -74,6 +76,7 @@ public:
         // check next nodes
         for (auto& neighbor : neighbors) {
             set<Node*> found = findPaths(neighbor);
+            node->paths += neighbor->paths;
             node->found.insert(found.begin(), found.end());
         }
 
@@ -98,8 +101,20 @@ int partOne(Grid& g) {
     int paths = 0;
     auto starts = g.getStarts();
     for (auto& start : starts) {
+        int pathsCount = 0;
         g.findPaths(start);
         paths += start->found.size();
+    }
+    
+    return paths;
+}
+
+int partTwo(Grid& g) {
+    int paths = 0;
+    auto starts = g.getStarts();
+    for (auto& start : starts) {
+        g.findPaths(start);
+        paths += start->paths;
     }
     
     return paths;
@@ -110,6 +125,10 @@ int main() {
     vector<string> grid = readGrid(filename);
     Grid g(grid);
     cout << "Part 1: "<< partOne(g) << endl;
+    // to reset nodes found set
+    g = Grid(grid);
+
+    cout << "Part 2: "<< partTwo(g) << endl;
 
     return 0;
 }
