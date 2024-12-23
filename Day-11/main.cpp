@@ -2,11 +2,12 @@
 #include <fstream>
 #include <vector>
 #include <tuple>
+#include <map>
 
 using namespace std;
 
-vector<long> readStones(string filename) {
-    vector<long> stones;
+vector<long long> readStones(string filename) {
+    vector<long long> stones;
     fstream fh(filename);
     string line;
     getline(fh, line);
@@ -24,7 +25,7 @@ vector<long> readStones(string filename) {
     return stones;
 }
 
-tuple<long, long> splitNumberInTwo(long num, int digits) {
+tuple<long long, long long> splitNumberInTwo(long long num, int digits) {
     int breakPoint = digits / 2;
     long numberTwo = 0;
 
@@ -39,7 +40,7 @@ tuple<long, long> splitNumberInTwo(long num, int digits) {
     return make_tuple(num, numberTwo);
 }
 
-int countDigits(long num) {
+int countDigits(long long num) {
     int count = 0;
     while (num > 0) {
         num /= 10;
@@ -48,7 +49,7 @@ int countDigits(long num) {
     return count;
 }
 
-void blinkAtStone(vector<long>& stones, int& i) {
+void blinkAtStones(vector<long long>& stones, int& i) {
     if (stones[i] == 0) {
         stones[i] = 1;
         return;
@@ -60,16 +61,16 @@ void blinkAtStone(vector<long>& stones, int& i) {
         return;
     }
 
-    int num1, num2;
+    long long num1, num2;
     tie(num1, num2) = splitNumberInTwo(stones[i], digits);
     stones[i] = num1;
     stones.insert(stones.begin() + ++i /* ++i bcs its still part of this number */, num2);
 }
 
-int partOne(vector<long> stones, int blinks) {
+int partOne(vector<long long> stones, int blinks) {
     int i = 0;
     while (blinks > 0) {
-        blinkAtStone(stones, i);
+        blinkAtStones(stones, i);
 
         i = (i + 1) % stones.size();
         // blink handled
@@ -82,17 +83,56 @@ int partOne(vector<long> stones, int blinks) {
     return stones.size();
 }
 
-int partTwo() {
-    // Implementation for part two
-    return 0;
+long long blinkAtStoneMemo(long long stone, int blinks) {
+    static map<tuple<long long, long long>, long long> memo;
+    // one bcs we count initial stone
+    if (blinks == 0) {
+        return 1;
+    }
+
+    auto key = make_tuple(stone, blinks);
+
+    if (memo.find(key) != memo.end()) {
+        return memo[key];
+    }
+    long long result = 0;
+    if (stone == 0) {
+        result = blinkAtStoneMemo(1, blinks - 1);
+        memo[key] = result;
+        return result;
+    }
+    int digits = countDigits(stone);
+    if (digits % 2 == 1) {
+        result = blinkAtStoneMemo(stone * 2024, blinks - 1);
+        memo[key] = result;
+        return result;
+    }
+
+    long long num1, num2;
+    tie(num1, num2) = splitNumberInTwo(stone, digits);
+    result = blinkAtStoneMemo(num1, blinks - 1) + blinkAtStoneMemo(num2, blinks - 1);
+    memo[key] = result;
+    // added new one while splitting number
+    return result;
+}
+
+
+long long partTwo(vector<long long> stones, int blinks) {
+    long long result = 0;
+
+    for (auto& stone : stones) {
+        result += blinkAtStoneMemo(stone, blinks);
+    }
+
+    return result;
 }
 
 int main() {
     string filename = "input.txt";
     fstream fh(filename);
-    vector<long> stones = readStones(filename);
+    vector<long long> stones = readStones(filename);
     fh.close();
     cout << "Part 1: " << partOne(stones, 25) << endl;
-    cout << "Part 2: " << partTwo() << endl;
+    cout << "Part 2: " << partTwo(stones, 75) << endl;
     return 0;
 }
