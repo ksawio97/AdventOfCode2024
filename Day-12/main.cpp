@@ -5,11 +5,19 @@
 #include <memory>
 #include <map>
 #include <tuple>
+#include <set>
 using namespace std;
 
+enum Sides {
+    TOP = 0,
+    BOTTOM = 1,
+    LEFT = 2,
+    RIGHT = 3
+};
 
 class Plot {
 public:
+    set<Sides> perimeters{};
     bool isVisited;
     int r, c;
     char value;
@@ -20,6 +28,24 @@ public:
     bool hasGarden() {
         return this->gardenIndex != -1;
     }
+
+    void addPerimeters(vector<Plot*>& gardenNeighbors) {
+        set<Sides> sides = {TOP, BOTTOM, LEFT, RIGHT};
+        for (auto& gardenNeighbor : gardenNeighbors) {
+            // check where should be perimeter 
+            if (gardenNeighbor->r < this->r) {
+                sides.erase(TOP);
+            } else if (gardenNeighbor->r > this->r) {
+                sides.erase(BOTTOM);
+            } else if (gardenNeighbor->c < this->c) {
+                sides.erase(LEFT);
+            } else if (gardenNeighbor->c > this->c) {
+                sides.erase(RIGHT);
+            }
+        }
+
+        this->perimeters.insert(sides.begin(), sides.end());
+    }
 };
 
 class Garden {
@@ -28,7 +54,8 @@ public:
     int index;
     int perimeter;
     int area;
-    Garden(char value, int index) : value(value), area(0), perimeter(0), index(index) {}
+    int sides;
+    Garden(char value, int index) : value(value), area(0), perimeter(0), sides(0), index(index) {}
 
     tuple<char, int> getKey() {
         return make_tuple(this->value, this->index);
@@ -92,8 +119,10 @@ public:
         auto gardenKey = make_tuple(plot->value, plot->gardenIndex);
 
         auto gardenNeighbors = countGardenNeighborsAndExtendGarden(plot);
+
+        plot->addPerimeters(gardenNeighbors);
         // add perimeter to garden
-        gardens[gardenKey]->perimeter += 4 - gardenNeighbors.size();
+        gardens[gardenKey]->perimeter += plot->perimeters.size();
         // extend garden area
         gardens[gardenKey]->area++;
 
@@ -111,10 +140,60 @@ public:
         return this->gardensCount[value]++;
     }
 
-    int getGardensPrices() {
+    int getGardensPrices1() {
         int price = 0;
         for (auto garden : this->gardens) {
             price += garden.second->area * garden.second->perimeter;
+        }
+        return price;
+    }
+
+    void deleteSideFromPlots(Plot* plot, set<Sides> sides, Sides goTo) {
+        int rIncr = goTo == TOP ? -1: goTo == BOTTOM ? 1 : 0, cIncr = goTo == LEFT ? -1 : goTo == RIGHT ? 1 : 0;
+        
+        Plot* delFrom = getPlot(plot->r, plot->c);
+        while ((delFrom = getPlot(delFrom->r + rIncr, delFrom->c + cIncr)) != nullptr && sides.size() > 0 && delFrom->value == plot->value) {
+            set<Sides> nextSides{};
+            for (auto side : sides) {
+                int count = delFrom->perimeters.erase(side);
+                if (count > 0) {
+                    nextSides.insert(side);
+                }
+            }
+            // we replace them with next Sides bcs side might end earlier
+            sides = nextSides;
+        }
+    }
+
+    void countSides(Plot* plot) {
+        if (plot->perimeters.size() == 0) {
+            return;
+        }
+        tuple<char, int> gardenKey = make_tuple(plot->value, plot->gardenIndex);
+        gardens[gardenKey]->sides += plot->perimeters.size();
+
+        for (auto sideToDel : {TOP, BOTTOM, LEFT, RIGHT}) {
+            // if its not in perimeters then it might be in the same garden, delete
+            if (plot->perimeters.find(sideToDel) == plot->perimeters.end()) {
+                deleteSideFromPlots(plot, plot->perimeters, sideToDel);
+            }
+        }
+
+        plot->perimeters.clear();
+    }
+
+    int getGardensPrices2() {
+
+        for (int r = 0; r < this->grid.size(); r++) {
+            for (int c = 0; c < this->grid[r].size(); c++) {
+                Plot* plot = getPlot(r, c);
+                countSides(plot);
+            }
+        }
+
+        int price = 0;
+        for (auto garden : this->gardens) {
+            price += garden.second->area * garden.second->sides;
         }
         return price;
     }
@@ -132,20 +211,22 @@ vector<string> readGrid(string filename) {
     return grid;
 }
 
-int partOne(vector<string> grid) {
+Grid core(vector<string> grid) {
     Grid gardenGrid(grid);
     for (int r = 0; r < grid.size(); r++) {
         for (int c = 0; c < grid[r].size(); c++) {
             gardenGrid.visitPlot(r, c);
         }
     }
-    return gardenGrid.getGardensPrices();
+    return gardenGrid;
 }
 
 int main() {
     string filename = "input.txt";
     vector<string> grid = readGrid(filename);
-    cout << "Part 1: " << partOne(grid) << endl;
+    Grid gardenGrid = core(grid);
+    cout << "Part 1: " << gardenGrid.getGardensPrices1() << endl;
+    cout << "Part 2: " << gardenGrid.getGardensPrices2() << endl;
 
     return 0;
 }
