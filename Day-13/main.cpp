@@ -7,40 +7,45 @@ using namespace std;
 
 class Button {
 public:
-    int xMove, yMove;
-    Button(int xMove, int yMove) : xMove(xMove), yMove(yMove) {}
+    long long xMove, yMove;
+    Button(long long xMove, long long yMove) : xMove(xMove), yMove(yMove) {}
 };
 
 class Prize {
     public:
-    int x, y;
-    Prize(int x, int y) : x(x), y(y) {}
+    long long x, y;
+    Prize(long long x, long long y) : x(x), y(y) {}
 };
 
 class ClawMachine {
     Button a, b;
-    Prize prize;
 public:
+    Prize prize;
     ClawMachine(Button a, Button b, Prize prize) : a(a), b(b), prize(prize) {}
 
-    tuple<int, int> getPossibleButtonPresses() { 
-        int up = a.xMove * prize.y - prize.x * a.yMove;
-        int down = a.xMove * b.yMove - b.xMove * a.yMove;
-        if (up % down != 0) {
-            return { -1, -1 };
+    tuple<long long, long long> getPossibleButtonPresses() { 
+        double up = static_cast<double>(a.xMove) * prize.y - prize.x * a.yMove;
+        double down = static_cast<double>(a.xMove) * b.yMove - b.xMove * a.yMove;
+        if (floor(up / down) != up / down) {
+            return { 0, 0 };
         }
-        float clicksB = up / down;
-        float clicksA = (prize.y - b.yMove * clicksB) / a.yMove;
+        long long clicksB = up / down;
+        
+        double numerator = static_cast<double>(prize.y) - b.yMove * clicksB;
+        if (floor(numerator / a.yMove) != numerator / a.yMove) {
+            return { 0, 0 };
+        }
+        long long clicksA = numerator / a.yMove;
 
-        return { int(clicksA), int(clicksB) };
+        return { clicksA, clicksB };
     }
 
-    bool isPossible(int clicksA, int clicksB) {
+    bool isInLimit(long long clicksA, long long clicksB) {
         return 0 <= clicksA && clicksA <= 100 && 0 <= clicksB && clicksB <= 100;
     }
 };
 
-void readNextNums(const string& line, int* data, int& currDataIndex) {
+void readNextNums(const string& line, long long* data, long long& currDataIndex) {
     regex re(R"(\d+)");
     auto numsBegin = sregex_iterator(line.begin(), line.end(), re);
     auto numsEnd = sregex_iterator();
@@ -57,8 +62,8 @@ vector<ClawMachine> readMachinesData(string filepath) {
     fstream fh(filepath);
     string line;
     
-    int currDataIndex = 0;
-    int data[6]{};
+    long long currDataIndex = 0;
+    long long data[6]{};
     while (getline(fh, line)) {
         // add machine
         if (line == "") {
@@ -74,18 +79,24 @@ vector<ClawMachine> readMachinesData(string filepath) {
     return machines;
 }
 
-int partOne(vector<ClawMachine>& machines) {
-    int tokens = 0;
+long long core(vector<ClawMachine>& machines, bool checkLimit) {
+    long long tokens = 0;
     for (auto& machine : machines) {
         auto clicks = machine.getPossibleButtonPresses();
-        if (machine.isPossible(get<0>(clicks), get<1>(clicks))) {
+        if (!checkLimit || machine.isInLimit(get<0>(clicks), get<1>(clicks))) {
             tokens += get<0>(clicks) * 3 + get<1>(clicks);
         }
     }
     return tokens;
 }
+
 int main() {
     auto machines = readMachinesData("input.txt");
-    cout << "Part 1: " << partOne(machines) << endl;
+    cout << "Part 1: " << core(machines, true) << endl;
+    for (auto& machine : machines) {
+        machine.prize.x += 10000000000000;
+        machine.prize.y += 10000000000000;
+    }
+    cout << "Part 2: " << core(machines, false) << endl;
     return 0;
 }
